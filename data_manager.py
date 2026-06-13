@@ -1,9 +1,3 @@
-"""Model layer for the Smart Quiz System.
-
-This module owns all persistent data access. It uses JSON for user accounts
-and openpyxl for question and score workbooks, matching the course requirement.
-"""
-
 from __future__ import annotations
 
 import json
@@ -17,7 +11,6 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
 from crypto_utils import decrypt_bytes, encrypt_bytes
-
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -44,7 +37,6 @@ DEFAULT_SETTINGS = {
     },
 }
 
-
 @dataclass
 class Question:
     id: int
@@ -70,9 +62,7 @@ class Question:
             self.score,
         ]
 
-
 class UserDB:
-    """Read user accounts from encrypted users.sudausers (or fallback users.xlsx)."""
 
     def __init__(self) -> None:
         self._enc_path = USERS_SUDAUSERS_FILE
@@ -80,11 +70,10 @@ class UserDB:
         self._users: list[dict] = []
 
     def load_users(self) -> list[dict]:
-        """Load users: prefer encrypted .sudausers, fall back to .xlsx."""
-        # Try encrypted first
+
         if self._enc_path.exists():
             return self._load_from_encrypted()
-        # Fall back to xlsx, then encrypt it
+
         if self._xlsx_path.exists():
             users = self._load_from_xlsx()
             self._encrypt_users_file()
@@ -153,7 +142,6 @@ class UserDB:
             raise RuntimeError(f"加密用户文件读取失败：{exc}") from exc
 
     def _encrypt_users_file(self) -> None:
-        """Read users.xlsx and write encrypted users.sudausers."""
         if not self._xlsx_path.exists():
             return
         try:
@@ -163,25 +151,21 @@ class UserDB:
             pass
 
     def authenticate(self, student_id: str, name: str, password: str) -> Optional[dict]:
-        """Match 学号 + 姓名 + 密码."""
         sid = student_id.strip()
         nm = name.strip()
         pw = password.strip()
         for user in self._users:
             if user["student_id"] == sid and user["name"] == nm and user["password"] == pw:
                 result = dict(user)
-                result["username"] = user["student_id"]  # alias for ScoreManager
+                result["username"] = user["student_id"]
                 return result
         return None
 
     def is_registered(self, student_id: str) -> bool:
-        """Check if a student_id exists in the loaded user list."""
         sid = student_id.strip()
         return any(u["student_id"] == sid for u in self._users)
 
-
 class QuestionBank:
-    """Manage question workbook with openpyxl — stored as encrypted .sudasqs."""
 
     HEADERS = [
         "id",
@@ -328,22 +312,19 @@ class QuestionBank:
         return max(ids, default=0) + 1
 
     def reorder_questions(self, ordered_ids: List[int]) -> None:
-        """Rewrite questions.xlsx in the given ID order with fresh sequential IDs."""
         all_qs = {q.id: q for q in self.load_questions()}
         workbook, sheet = self._load_sheet()
-        # Remove all data rows (keep header)
+
         for _ in range(sheet.max_row, 1, -1):
             sheet.delete_rows(2)
-        # Rewrite in new order with new IDs
+
         for new_id, old_id in enumerate(ordered_ids, start=1):
             q = all_qs[old_id]
             q.id = new_id
             sheet.append(q.to_row())
         self._save_workbook(workbook)
 
-
 class ScoreManager:
-    """Persist and query exam score history — stored as RSA+AES encrypted .ilovesuda."""
 
     HEADERS = [
         "username",
@@ -364,7 +345,6 @@ class ScoreManager:
         self._ensure_workbook()
 
     def _migrate_from_xlsx(self) -> None:
-        """One-time migration: if old scores.xlsx exists, encrypt it as scores.ilovesuda."""
         old_path = self.path.parent / "scores.xlsx"
         if not old_path.exists() or self.path.exists():
             return
@@ -373,7 +353,7 @@ class ScoreManager:
             self.path.write_bytes(encrypt_bytes(data))
             old_path.rename(old_path.with_suffix(".xlsx.bak"))
         except Exception:
-            pass  # migration is best-effort
+            pass
 
     def _ensure_workbook(self) -> None:
         if self.path.exists():
@@ -431,7 +411,6 @@ class ScoreManager:
         self._save_workbook(workbook)
 
     def import_record(self, record: Dict[str, object]) -> None:
-        """Append a decrypted record (from a student .ilovesuda export) to scores.ilovesuda."""
         workbook, sheet = self._load_sheet()
         wrong_answers = record.get("wrong_answers", {})
         sheet.append(
@@ -490,7 +469,6 @@ class ScoreManager:
         return list(dict.fromkeys(ids))
 
     def remove_wrong_id(self, username: str, question_id: int) -> bool:
-        """Remove a specific wrong-question ID from all of a user's score records."""
         workbook, sheet = self._load_sheet()
         modified = False
         for row_idx in range(2, sheet.max_row + 1):
@@ -506,7 +484,6 @@ class ScoreManager:
         return modified
 
     def delete_record(self, username: str, exam_time: str) -> bool:
-        """Delete a single score record identified by username + exam_time."""
         workbook, sheet = self._load_sheet()
         for row_idx in range(2, sheet.max_row + 1):
             if (str(sheet.cell(row_idx, 1).value) == username
@@ -516,9 +493,7 @@ class ScoreManager:
                 return True
         return False
 
-
 class ExamTracker:
-    """Track which exam UUIDs each student has completed."""
 
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or (DATA_DIR / "completed_exams.json")
@@ -547,12 +522,10 @@ class ExamTracker:
         data.setdefault(username, []).append(exam_uuid)
         self._save(data)
 
-
 def export_question_bank_to_bytes(questions: List[Question], password: str,
                                    duration_minutes: int = 30,
                                    distribution: dict | None = None,
                                    exam_type: str = "exam") -> bytes:
-    """Serialize and dual-layer encrypt a question list into .sudasqs bytes."""
     import uuid
     from crypto_utils import encrypt_question_bank
 
@@ -578,9 +551,7 @@ def export_question_bank_to_bytes(questions: List[Question], password: str,
     plain = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     return exam_uuid, encrypt_question_bank(plain, password)
 
-
 def import_question_bank_as_teacher(data: bytes) -> tuple:
-    """Decrypt .sudasqs bytes with RSA (teacher mode) — no password needed."""
     from crypto_utils import decrypt_question_bank_as_teacher
 
     plain = decrypt_question_bank_as_teacher(data)
@@ -599,9 +570,7 @@ def import_question_bank_as_teacher(data: bytes) -> tuple:
     ]
     return payload["exam_id"], payload.get("duration_minutes", 30), payload.get("distribution"), payload.get("exam_type", "exam"), questions
 
-
 def import_question_bank_as_student(data: bytes, password: str) -> tuple:
-    """Decrypt .sudasqs bytes with password (student mode)."""
     from crypto_utils import decrypt_question_bank_as_student
 
     plain = decrypt_question_bank_as_student(data, password)
@@ -620,9 +589,7 @@ def import_question_bank_as_student(data: bytes, password: str) -> tuple:
     ]
     return payload["exam_id"], payload.get("duration_minutes", 30), payload.get("distribution"), payload.get("exam_type", "exam"), questions
 
-
 class SettingsManager:
-    """Persist user-customized appearance settings."""
 
     def __init__(self, path: Path = SETTINGS_FILE) -> None:
         self.path = path
@@ -637,7 +604,7 @@ class SettingsManager:
         try:
             with self.path.open("r", encoding="utf-8") as file:
                 data = json.load(file)
-            # Merge with defaults so new keys always exist
+
             merged = _deep_merge(DEFAULT_SETTINGS, data)
             return merged
         except (json.JSONDecodeError, OSError):
@@ -651,9 +618,7 @@ class SettingsManager:
         self.save_settings(DEFAULT_SETTINGS)
         return dict(DEFAULT_SETTINGS)
 
-
 def _deep_merge(base: dict, override: dict) -> dict:
-    """Recursively merge override into base, returning a new dict."""
     result = dict(base)
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
@@ -662,11 +627,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
             result[key] = value
     return result
 
-
-# ── Avatar helpers ────────────────────────────────────────────────
-
 def process_avatar_file(filepath: str) -> str:
-    """Load an image, resize to max 1024×1024, return base64 JPEG string."""
     import base64
     from io import BytesIO
 
@@ -681,9 +642,7 @@ def process_avatar_file(filepath: str) -> str:
     img.save(buf, format="JPEG", quality=80)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-
 def avatar_to_tk_image(avatar_b64: str, size: int = 64) -> object:
-    """Decode base64 avatar → circular-masked PIL Image → tk PhotoImage."""
     import base64
     from io import BytesIO
 
@@ -691,13 +650,12 @@ def avatar_to_tk_image(avatar_b64: str, size: int = 64) -> object:
 
     raw = base64.b64decode(avatar_b64)
     img = Image.open(BytesIO(raw)).resize((size, size), Image.LANCZOS)
-    # Circular mask
+
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
     img.putalpha(mask)
 
-    # tk PhotoImage requires a reference kept alive — caller must store it
-    from tkinter import PhotoImage  # type: ignore[import]
+    from tkinter import PhotoImage
     import tkinter as tk
 
     root = tk._default_root
@@ -707,25 +665,19 @@ def avatar_to_tk_image(avatar_b64: str, size: int = 64) -> object:
         root.withdraw()
     return PhotoImage(master=root, data=_pil_to_png_bytes(img))
 
-
 def _pil_to_png_bytes(img) -> bytes:
     from io import BytesIO
     buf = BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-
 def save_avatar(student_id: str, avatar_b64: str) -> None:
-    """Persist avatar to avatars.json."""
     data = _load_avatars()
     data[student_id] = avatar_b64
     AVATARS_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
-
 def load_avatar(student_id: str) -> str:
-    """Load a single student's avatar base64, or ''."""
     return _load_avatars().get(student_id, "")
-
 
 def _load_avatars() -> dict:
     if not AVATARS_FILE.exists():

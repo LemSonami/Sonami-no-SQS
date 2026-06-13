@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 
 from data_manager import Question
 
-
 BG = "#f4f7fb"
 PANEL = "#ffffff"
 TEXT = "#1f2937"
@@ -16,9 +15,7 @@ SUCCESS = "#16a34a"
 DANGER = "#dc2626"
 BORDER = "#d8dee9"
 
-
 def _set_bg_image(frame, opacity: float = 0.35) -> None:
-    """Load bg.png, blend with BG colour at given opacity, place as background."""
     from pathlib import Path
     from io import BytesIO
     from PIL import Image, ImageTk
@@ -28,30 +25,28 @@ def _set_bg_image(frame, opacity: float = 0.35) -> None:
         return
     try:
         img = Image.open(bg_path).convert("RGBA")
-        # Blend with BG color
+
         bg_rgb = (0xF4, 0xF7, 0xFB, 255)
         overlay = Image.new("RGBA", img.size, bg_rgb)
         blended = Image.blend(overlay, img, opacity)
-        # Resize to fill frame (will be stretched by the label)
-        blended = blended.resize((1, 1), Image.LANCZOS)  # minimal size, label stretches
-        # Actually, let's resize to a reasonable size then let the label stretch
+
+        blended = blended.resize((1, 1), Image.LANCZOS)
+
         blended = Image.open(bg_path).convert("RGBA")
         blended = Image.blend(
             Image.new("RGBA", blended.size, bg_rgb), blended, opacity
         )
         photo = ImageTk.PhotoImage(blended)
         lbl = tk.Label(frame, image=photo, bg=BG, bd=0)
-        lbl.image = photo  # keep reference
+        lbl.image = photo
         lbl.place(relwidth=1, relheight=1, x=0, y=0)
-        lbl.lower()  # push behind other widgets
+        lbl.lower()
     except Exception:
         pass
-
 
 FONT_FAMILY = "Lolita"
 
 class RoundedButton(tk.Label):
-    """A PIL-rendered rounded-corner button."""
 
     _img_cache: dict = {}
     _instances: list = []
@@ -92,14 +87,14 @@ class RoundedButton(tk.Label):
         key = (color, self._btn_w, self._btn_h, self._r)
         if key in RoundedButton._img_cache:
             return RoundedButton._img_cache[key]
-        # Border color: slightly darker than fill
+
         border_c = _darken(color, 0.75)
         img = Image.new("RGBA", (self._btn_w, self._btn_h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
-        # Border (outer)
+
         draw.rounded_rectangle([(0, 0), (self._btn_w - 1, self._btn_h - 1)],
                                radius=self._r, fill=border_c)
-        # Fill (inner, 2px inset)
+
         draw.rounded_rectangle([(2, 2), (self._btn_w - 3, self._btn_h - 3)],
                                radius=self._r - 1, fill=color)
         photo = ImageTk.PhotoImage(img)
@@ -123,7 +118,6 @@ class RoundedButton(tk.Label):
         if self._cmd:
             self._cmd()
 
-
 class BaseFrame(ttk.Frame):
     def __init__(self, master, controller) -> None:
         super().__init__(master, padding=18)
@@ -140,19 +134,16 @@ class BaseFrame(ttk.Frame):
         row.pack(fill="x", pady=12)
         return row
 
-
 class LoginWindow(BaseFrame):
     def __init__(self, master, controller) -> None:
         super().__init__(master, controller)
         self.title("Sonami×智测系统 V0.1.0", "请使用学号、姓名、密码登录")
 
-        # Settings button (absolute top-right)
         ttk.Button(self, text="⚙ 设置", command=controller.show_settings).place(relx=1.0, y=0, anchor="ne")
 
         card = ttk.Frame(self, style="Card.TFrame", padding=24)
         card.pack(fill="x", padx=120, pady=28)
 
-        # Load login cache
         import json
         from data_manager import LOGIN_CACHE_FILE
         cached = {"student_id": "", "name": "", "password": ""}
@@ -191,7 +182,6 @@ class LoginWindow(BaseFrame):
             return
         if not self.controller.login(student_id, name, password):
             messagebox.showerror("登录失败", "学号、姓名或密码错误")
-
 
 class RegisterDialog(tk.Toplevel):
     def __init__(self, parent, controller) -> None:
@@ -254,7 +244,6 @@ class RegisterDialog(tk.Toplevel):
         messagebox.showinfo("注册成功", "账号已创建，请返回登录")
         self.destroy()
 
-
 class StudentDashboard(BaseFrame):
     def __init__(self, master, controller) -> None:
         super().__init__(master, controller)
@@ -263,11 +252,10 @@ class StudentDashboard(BaseFrame):
         student_id = user.get("student_id", "")
         best = controller.score_manager.best_score(user.get("username", student_id))
 
-        # ── Avatar display ──
         title_frame = ttk.Frame(self, style="App.TFrame")
         title_frame.pack(fill="x")
 
-        self._avatar_photo = None  # keep reference alive
+        self._avatar_photo = None
         avatar_b64 = user.get("avatar_base64", "")
         if not avatar_b64:
             from data_manager import load_avatar
@@ -280,7 +268,6 @@ class StudentDashboard(BaseFrame):
             except Exception:
                 pass
 
-        # Title with welcome
         title_text = f"欢迎，{user.get('name', user.get('username', '学生'))}"
         ttk.Label(title_frame, text=title_text, style="Title.TLabel").pack(side="left")
         ttk.Label(self, text=f"历史最高分：{best}", style="Muted.TLabel").pack(anchor="w", pady=(4, 16))
@@ -293,7 +280,6 @@ class StudentDashboard(BaseFrame):
         RoundedButton(top, text="错题本", command=controller.show_wrong_book, width=90).pack(side="left", padx=(0, 10))
         RoundedButton(top, text="退出登录", command=controller.show_login, width=90).pack(side="right")
 
-        # Import avatar + Settings buttons (absolute top-right)
         ttk.Button(self, text="导入头像", command=self._import_avatar).place(relx=1.0, x=-150, y=4, anchor="ne")
         ttk.Button(self, text="⚙ 设置", command=controller.show_settings).place(relx=1.0, y=4, anchor="ne")
 
@@ -348,7 +334,6 @@ class StudentDashboard(BaseFrame):
             self.chart.create_text(x, y - 16, text=str(records[index - 1]["score"]), fill=TEXT)
 
     def _start_exam_with_file(self) -> None:
-        """File-based exam flow: select .sudasqs → enter password → start exam."""
         from tkinter import filedialog, simpledialog
 
         path = filedialog.askopenfilename(
@@ -370,7 +355,6 @@ class StudentDashboard(BaseFrame):
             messagebox.showerror("导入失败", f"无法读取试卷文件：{exc}")
             return
 
-        # Block repeat attempts
         username = self.controller.current_user.get("username", "")
         if exam_uuid and self.controller.exam_tracker.is_completed(username, exam_uuid):
             messagebox.showwarning(
@@ -379,12 +363,10 @@ class StudentDashboard(BaseFrame):
             )
             return
 
-        # Select questions according to distribution
         selected = self.controller._pick_exam_questions(questions, distribution)
         self.controller.start_exam(selected, exam_uuid, duration * 60)
 
     def _play_game(self) -> None:
-        """Import a .sudasqs of type 'game' and launch the bullet-hell game."""
         import json
         import subprocess
         import tempfile
@@ -410,13 +392,11 @@ class StudentDashboard(BaseFrame):
             messagebox.showwarning("类型错误", "此题库类型为「试卷」，不是「游戏」，请使用「开始考试」按钮。")
             return
 
-        # Only multiple-choice questions for the game
         mc_questions = [q for q in questions if q.qtype == "单选" and q.options]
         if not mc_questions:
             messagebox.showwarning("题目不足", "该题库中没有选择题，无法开始游戏。")
             return
 
-        # Save questions + duration to a temp file for the game to read
         q_data = {
             "duration_minutes": duration,
             "questions": [
@@ -458,10 +438,9 @@ class StudentDashboard(BaseFrame):
             self.controller.save_avatar(sid, b64)
             self.controller.current_user["avatar_base64"] = b64
             messagebox.showinfo("导入成功", "头像已设置。")
-            self.controller.show_student_dashboard()  # refresh to show avatar
+            self.controller.show_student_dashboard()
         except Exception as exc:
             messagebox.showerror("导入失败", f"无法处理图片：{exc}")
-
 
 class QuizWindow(BaseFrame):
     def __init__(self, master, controller, duration_seconds: int = 600) -> None:
@@ -532,7 +511,6 @@ class QuizWindow(BaseFrame):
         self.progress["value"] = self.question_index + 1
         self.question_label.config(text=f"{question.text}（{question.score} 分）")
 
-        # Hide "next" button on the last question
         if self.question_index >= total - 1:
             self._next_btn.pack_forget()
         else:
@@ -597,7 +575,6 @@ class QuizWindow(BaseFrame):
         result = self.controller.submit_exam()
         self.controller.show_result(result)
 
-
 class ResultWindow(BaseFrame):
     def __init__(self, master, controller, result: Optional[Dict[str, object]]) -> None:
         super().__init__(master, controller)
@@ -606,7 +583,6 @@ class ResultWindow(BaseFrame):
         self._total = self.result["total"]
         self._revealed = False
 
-        # Manual title so we can update the subtitle later
         ttk.Label(self, text="考试结果", style="Title.TLabel").pack(anchor="w")
         self._subtitle_label = ttk.Label(
             self, text="本次得分：0 → ???",
@@ -614,13 +590,11 @@ class ResultWindow(BaseFrame):
         )
         self._subtitle_label.pack(anchor="w", pady=(4, 16))
 
-        # ── Actions bar (only export visible initially) ──
         self.actions = ttk.Frame(self, style="App.TFrame")
         self.actions.pack(fill="x")
         ttk.Button(self.actions, text="导出答题情况",
                    command=self._export_result).pack(side="left")
 
-        # ── Hidden content overlay (playful message) ──
         self._hidden_area = ttk.Frame(self, style="App.TFrame")
         self._hidden_area.pack(fill="both", expand=True, pady=16)
         tease_card = ttk.Frame(self._hidden_area, style="Card.TFrame", padding=40)
@@ -638,7 +612,6 @@ class ResultWindow(BaseFrame):
             style="Muted.TLabel",
         ).pack(pady=(16, 0))
 
-        # ── Real content (built but hidden until export) ──
         self._real_content = ttk.Frame(self, style="App.TFrame")
 
         left = ttk.Frame(self._real_content, style="Card.TFrame", padding=16)
@@ -654,24 +627,18 @@ class ResultWindow(BaseFrame):
         self._detail_text.pack(fill="both", expand=True, pady=(12, 0))
 
     def _reveal(self) -> None:
-        """Show the real exam results after export."""
         if self._revealed:
             return
         self._revealed = True
 
-        # Reveal real score
         self._subtitle_label.config(text=f"本次得分：{self._score} / {self._total}")
 
-        # Destroy hidden area
         self._hidden_area.destroy()
 
-        # Show real content
         self._real_content.pack(fill="both", expand=True, pady=16)
 
-        # Draw charts
         self.draw_type_bars(self._type_canvas, self.result.get("type_stats", {}))
 
-        # Fill detail text
         for item in self.result.get("details", []):
             question = item["question"]
             status = "正确" if item["correct"] else "错误"
@@ -680,7 +647,6 @@ class ResultWindow(BaseFrame):
             self._detail_text.insert("end", f"解析：{question.analysis}\n\n")
         self._detail_text.config(state="disabled")
 
-        # Reveal extra buttons
         ttk.Button(self.actions, text="查看错题本",
                    command=self.controller.show_wrong_book).pack(side="left", padx=(10, 0))
         ttk.Button(self.actions, text="返回主页",
@@ -714,7 +680,6 @@ class ResultWindow(BaseFrame):
             canvas.create_text(x + bar_width / 2, height - 50 - bar_height, text=f"{rate:.0%}", fill=TEXT)
 
     def _export_result(self) -> None:
-        """Export the current exam result as an RSA-encrypted .ilovesuda file."""
         from datetime import datetime
         from tkinter import filedialog
 
@@ -735,14 +700,12 @@ class ResultWindow(BaseFrame):
         except Exception as exc:
             messagebox.showerror("导出失败", str(exc))
 
-
 class WrongBookWindow(BaseFrame):
     def __init__(self, master, controller) -> None:
         super().__init__(master, controller)
         _set_bg_image(self, 0.60)
         self.title("智能错题本", "自动汇总历史考试中答错的题目，并展示答案与解析")
 
-        # ── Top button row ──
         top_row = ttk.Frame(self, style="App.TFrame")
         top_row.pack(fill="x")
         RoundedButton(top_row, text="返回主页", command=controller.show_student_dashboard, width=90).pack(side="left")
@@ -769,7 +732,6 @@ class WrongBookWindow(BaseFrame):
         canvas.pack(side="left", fill="both", expand=True, pady=16)
         scrollbar.pack(side="right", fill="y")
 
-        # Enable mouse wheel scrolling everywhere in the scroll area
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
@@ -799,7 +761,6 @@ class WrongBookWindow(BaseFrame):
                 anchor="w", pady=(4, 0)
             )
 
-            # Right-click context menu on every card and its children
             def _bind_right_click(widget, qid=question.id):
                 widget.bind("<Button-3>",
                             lambda e, q=qid: self._on_wrong_card_right_click(e, q))
@@ -822,10 +783,9 @@ class WrongBookWindow(BaseFrame):
             return
         user = self.controller.current_user or {}
         self.controller.score_manager.remove_wrong_id(user.get("username", ""), question_id)
-        self.controller.show_wrong_book()  # refresh the view
+        self.controller.show_wrong_book()
 
     def _export_markdown(self) -> None:
-        """Generate and save a Markdown file of all wrong questions."""
         from datetime import datetime
         from tkinter import filedialog
 
@@ -838,7 +798,7 @@ class WrongBookWindow(BaseFrame):
             initialfile=default_name,
         )
         if not path:
-            return  # user cancelled
+            return
 
         user = self.controller.current_user or {}
         lines = [
@@ -870,9 +830,7 @@ class WrongBookWindow(BaseFrame):
         except OSError as exc:
             messagebox.showerror("导出失败", f"无法写入文件：{exc}")
 
-
 class ExamDetailDialog(tk.Toplevel):
-    """Show one student's exam details — wrong questions, type stats, answers."""
 
     def __init__(self, parent, controller, record: Dict[str, object]) -> None:
         super().__init__(parent)
@@ -887,7 +845,6 @@ class ExamDetailDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=20, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        # ── Header: student info + score ──
         header = ttk.Frame(body, style="Card.TFrame", padding=16)
         header.pack(fill="x", pady=(0, 14))
 
@@ -904,8 +861,7 @@ class ExamDetailDialog(tk.Toplevel):
                   foreground=SUCCESS if int(score) / max(1, int(total)) >= 0.6 else DANGER).pack(
             anchor="w", pady=(6, 0))
 
-        # ── Type stats ──
-        type_stats: Dict[str, Dict[str, int]] = record.get("type_stats", {})  # type: ignore[assignment]
+        type_stats: Dict[str, Dict[str, int]] = record.get("type_stats", {})
         if type_stats:
             stats_frame = ttk.Frame(body, style="Card.TFrame", padding=14)
             stats_frame.pack(fill="x", pady=(0, 14))
@@ -919,9 +875,8 @@ class ExamDetailDialog(tk.Toplevel):
                 row_frame.pack(fill="x", pady=(4, 0))
                 ttk.Label(row_frame, text=f"• {qtype}：{pct}", foreground=color).pack(side="left")
 
-        # ── Wrong questions ──
-        wrong_ids: List[int] = record.get("wrong_ids", [])  # type: ignore[assignment]
-        wrong_answers: Dict[str, str] = record.get("wrong_answers", {})  # type: ignore[assignment]
+        wrong_ids: List[int] = record.get("wrong_ids", [])
+        wrong_answers: Dict[str, str] = record.get("wrong_answers", {})
         all_questions = {q.id: q for q in self.controller.question_bank.load_questions()}
         wrong_questions = [all_questions[qid] for qid in wrong_ids if qid in all_questions]
 
@@ -930,7 +885,7 @@ class ExamDetailDialog(tk.Toplevel):
         if not wrong_questions:
             ttk.Label(body, text="该次考试全部正确，无错题记录。", style="Muted.TLabel").pack(anchor="w", pady=12)
         else:
-            # Scrollable wrong-question list
+
             canvas = tk.Canvas(body, bg=BG, highlightthickness=0, height=min(380, 120 * len(wrong_questions)))
             scrollbar = ttk.Scrollbar(body, orient="vertical", command=canvas.yview)
             inner = ttk.Frame(canvas, style="App.TFrame")
@@ -940,7 +895,6 @@ class ExamDetailDialog(tk.Toplevel):
             canvas.pack(side="left", fill="both", expand=True)
             scrollbar.pack(side="right", fill="y")
 
-            # Mouse wheel for the dialog's scroll area
             def _wheel(event):
                 canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
@@ -957,7 +911,7 @@ class ExamDetailDialog(tk.Toplevel):
                 if q.options:
                     ttk.Label(card, text="　".join(q.options), style="Muted.TLabel", wraplength=680).pack(
                         anchor="w", pady=(4, 0))
-                # Show student's wrong answer
+
                 user_ans = wrong_answers.get(str(q.id), "")
                 if user_ans:
                     ttk.Label(card, text=f"学生作答：{user_ans}", foreground=DANGER).pack(anchor="w", pady=(4, 0))
@@ -972,10 +926,7 @@ class ExamDetailDialog(tk.Toplevel):
             canvas.bind("<MouseWheel>", _wheel)
             scrollbar.bind("<MouseWheel>", _wheel)
 
-
-
 class EditQuestionDialog(tk.Toplevel):
-    """Dialog for editing an existing question's fields."""
 
     def __init__(self, parent, controller, question: Question) -> None:
         super().__init__(parent)
@@ -990,7 +941,6 @@ class EditQuestionDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=20, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        # ── Fields ──
         ttk.Label(body, text="题型").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=6)
         self.qtype_var = tk.StringVar(value=question.qtype)
         ttk.Combobox(body, textvariable=self.qtype_var, values=["单选", "填空", "判断"],
@@ -1021,7 +971,6 @@ class EditQuestionDialog(tk.Toplevel):
         ttk.Label(body, text="选项用英文分号 ; 分隔。单选答案填 A/B/C/D，判断填 正确/错误。",
                   style="Muted.TLabel").grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
-        # ── Buttons ──
         btn_row = ttk.Frame(body, style="App.TFrame")
         btn_row.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         RoundedButton(btn_row, text="取消", command=self.destroy, width=80).pack(side="right", padx=(10, 0))
@@ -1048,7 +997,7 @@ class EditQuestionDialog(tk.Toplevel):
             messagebox.showerror("保存失败", str(exc))
             return
         messagebox.showinfo("保存成功", f"题目 #{self.question.id} 已更新")
-        # Refresh the teacher's question table
+
         parent = self.master
         while parent and not isinstance(parent, TeacherDashboard):
             parent = parent.master
@@ -1056,14 +1005,12 @@ class EditQuestionDialog(tk.Toplevel):
             parent.refresh_questions()
         self.destroy()
 
-
 class ExportExamDialog(tk.Toplevel):
-    """Dialog for exporting an exam — password, type distribution, duration."""
 
     def __init__(self, parent, controller) -> None:
         super().__init__(parent)
         self.controller = controller
-        self.result: Optional[Dict] = None  # populated on confirm
+        self.result: Optional[Dict] = None
         self.title("导出试卷设置")
         self.resizable(False, False)
         self.configure(bg=BG)
@@ -1073,7 +1020,6 @@ class ExportExamDialog(tk.Toplevel):
         body = ttk.Frame(self, padding=20, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        # ── Password ──
         ttk.Label(body, text="试卷密钥（密码）", style="Section.TLabel").grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 4))
         self.pwd_var = tk.StringVar()
@@ -1082,7 +1028,6 @@ class ExportExamDialog(tk.Toplevel):
         ttk.Label(body, text="学生凭此密码参加考试，至少 3 位。",
                   style="Muted.TLabel").grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 14))
 
-        # ── Duration ──
         ttk.Label(body, text="答题时长（分钟）", style="Section.TLabel").grid(
             row=3, column=0, columnspan=2, sticky="w", pady=(0, 4))
         self.duration_var = tk.StringVar(value="30")
@@ -1091,7 +1036,6 @@ class ExportExamDialog(tk.Toplevel):
         ttk.Label(body, text="学生考试倒计时，必须设置。",
                   style="Muted.TLabel").grid(row=5, column=0, columnspan=3, sticky="w", pady=(0, 14))
 
-        # ── Exam type ──
         ttk.Label(body, text="题库类型", style="Section.TLabel").grid(
             row=6, column=0, columnspan=2, sticky="w", pady=(0, 4))
         self.type_var = tk.StringVar(value="exam")
@@ -1102,7 +1046,6 @@ class ExportExamDialog(tk.Toplevel):
         ttk.Radiobutton(type_frame, text="游戏（学生娱乐用）", value="game",
                         variable=self.type_var).pack(side="left")
 
-        # ── Type distribution ──
         self.dist_enabled = tk.BooleanVar(value=False)
         ttk.Checkbutton(body, text="自定义题型分布（不启用则随机抽 10 题）",
                         variable=self.dist_enabled,
@@ -1121,9 +1064,8 @@ class ExportExamDialog(tk.Toplevel):
         self._fill_spin = ttk.Spinbox(dist_frame, textvariable=self.fill_count_var,
                                       from_=0, to=50, width=5)
         self._fill_spin.pack(side="left", padx=(4, 0))
-        self._toggle_dist()  # disable spinboxes initially
+        self._toggle_dist()
 
-        # ── Buttons ──
         btn_row = ttk.Frame(body, style="App.TFrame")
         btn_row.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(20, 0))
         RoundedButton(btn_row, text="取消", command=self.destroy, width=80).pack(side="right", padx=(10, 0))
@@ -1167,7 +1109,6 @@ class ExportExamDialog(tk.Toplevel):
         }
         self.destroy()
 
-
 class TeacherDashboard(BaseFrame):
     def __init__(self, master, controller) -> None:
         super().__init__(master, controller)
@@ -1177,7 +1118,7 @@ class TeacherDashboard(BaseFrame):
         actions.pack(fill="x")
         self._import_btn = ttk.Button(actions, text="导入答题情况", command=self._import_result)
         self._import_btn.pack(side="left", padx=(0, 10))
-        self._import_btn.pack_forget()  # only visible on score tab
+        self._import_btn.pack_forget()
         self._import_q_btn = ttk.Button(actions, text="导入题库", command=self._import_question_bank)
         self._import_q_btn.pack(side="left", padx=(0, 8))
         self._import_q_btn.pack_forget()
@@ -1192,9 +1133,8 @@ class TeacherDashboard(BaseFrame):
         ttk.Button(actions, text="退出登录", command=controller.show_login).pack(side="right", padx=(4, 0))
         self._batch_btn = ttk.Button(actions, text="批量管理", command=self._toggle_batch_mode)
         self._batch_btn.pack(side="right")
-        self._batch_btn.pack_forget()  # hidden initially, only visible on score tab
+        self._batch_btn.pack_forget()
 
-        # Settings button (absolute top-right, above button row)
         ttk.Button(self, text="⚙ 设置", command=controller.show_settings).place(relx=1.0, y=0, anchor="ne")
 
         notebook = ttk.Notebook(self)
@@ -1209,7 +1149,6 @@ class TeacherDashboard(BaseFrame):
         notebook.add(self.leaderboard_tab, text="排行榜")
         notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-        # Show question-tab buttons on startup (default tab)
         self._import_q_btn.pack(side="left", padx=(0, 8), before=self._refresh_btn)
         self._export_q_btn.pack(side="left", padx=(0, 8), before=self._refresh_btn)
         self._import_pdf_btn.pack(side="left", padx=(0, 8), before=self._refresh_btn)
@@ -1234,12 +1173,11 @@ class TeacherDashboard(BaseFrame):
             self.question_table.column(col, width=width, anchor="center" if col != "question" else "w")
         self.question_table.pack(fill="both", expand=True)
 
-        # ── Double-click to edit, drag to reorder ──
         self.question_table.bind("<Double-1>", self._on_question_double_click)
         self.question_table.bind("<ButtonPress-1>", self._on_question_press)
         self.question_table.bind("<B1-Motion>", self._on_question_motion)
         self.question_table.bind("<ButtonRelease-1>", self._on_question_release)
-        # Drag visual tags
+
         self.question_table.tag_configure("drag_ghost", background="#dbeafe")
         self.question_table.tag_configure("drop_target", background="#fef3c7")
         self._drag_item: Optional[str] = None
@@ -1254,7 +1192,6 @@ class TeacherDashboard(BaseFrame):
                    command=self.delete_selected).pack(side="left")
         ttk.Button(q_actions, text="批量管理", command=self._toggle_q_batch_mode).pack(side="left", padx=(10, 0))
 
-        # Question batch bar (hidden)
         self._q_batch_bar = ttk.Frame(self.question_tab, style="Card.TFrame", padding=8)
         ttk.Label(self._q_batch_bar, text="批量模式 — 按住 Ctrl 或 Shift 多选",
                   style="Section.TLabel").pack(side="left", padx=(4, 12))
@@ -1320,7 +1257,6 @@ class TeacherDashboard(BaseFrame):
         self.report_canvas = tk.Canvas(self.score_tab, height=210, bg=PANEL, highlightthickness=0)
         self.report_canvas.pack(fill="x", pady=(14, 0))
 
-        # Batch management bar (hidden until toggled)
         self._batch_bar = ttk.Frame(self.score_tab, style="Card.TFrame", padding=8)
         ttk.Label(self._batch_bar, text="批量模式 — 按住 Ctrl 或 Shift 多选",
                   style="Section.TLabel").pack(side="left", padx=(4, 12))
@@ -1334,7 +1270,7 @@ class TeacherDashboard(BaseFrame):
         ttk.Button(self._batch_bar, text="退出批量管理", command=self._toggle_batch_mode).pack(side="right")
 
         self._batch_mode = False
-        # Update the delete button count on selection change
+
         self.score_table.bind("<<TreeviewSelect>>", self._on_batch_selection_change, add="+")
 
     def refresh_all(self) -> None:
@@ -1344,11 +1280,9 @@ class TeacherDashboard(BaseFrame):
         self.refresh_leaderboard()
 
     def _on_tab_changed(self, event) -> None:
-        """Show/hide tab-specific buttons."""
         notebook = event.widget
         current_tab = notebook.index(notebook.select())
 
-        # Question tab (0)
         if current_tab == 0:
             self._import_q_btn.pack(side="left", padx=(0, 8), before=self._refresh_btn)
             self._export_q_btn.pack(side="left", padx=(0, 8), before=self._refresh_btn)
@@ -1358,7 +1292,6 @@ class TeacherDashboard(BaseFrame):
             self._export_q_btn.pack_forget()
             self._import_pdf_btn.pack_forget()
 
-        # Score tab (1)
         if current_tab == 1:
             self._batch_btn.pack(side="right")
             self._import_btn.pack(side="left", padx=(0, 10), before=self._refresh_btn)
@@ -1368,7 +1301,6 @@ class TeacherDashboard(BaseFrame):
             self._batch_btn.pack_forget()
             self._import_btn.pack_forget()
 
-        # Leaderboard tab (3) — background music
         if current_tab == 3:
             self._start_leaderboard_music()
         else:
@@ -1388,7 +1320,7 @@ class TeacherDashboard(BaseFrame):
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(str(dj))
                 pygame.mixer.music.play(-1)
-            # Play one correct sound per visit, cycling through 01→02→03
+
             if not hasattr(self, "_lb_sfx_files"):
                 self._lb_sfx_files = []
                 self._lb_sfx_idx = 0
@@ -1410,9 +1342,7 @@ class TeacherDashboard(BaseFrame):
         except Exception:
             pass
 
-
     def _import_result(self) -> None:
-        """Batch-import student .ilovesuda files and append to scores."""
         from tkinter import filedialog
 
         paths = filedialog.askopenfilenames(
@@ -1505,7 +1435,6 @@ class TeacherDashboard(BaseFrame):
         self.refresh_scores()
         self.refresh_stats()
 
-    # ── Batch management ──────────────────────────────────────────
     def _toggle_batch_mode(self) -> None:
         self._batch_mode = not self._batch_mode
         if self._batch_mode:
@@ -1556,7 +1485,7 @@ class TeacherDashboard(BaseFrame):
                 exam_time = str(record.get("exam_time", ""))
                 self.controller.score_manager.delete_record(username, exam_time)
                 deleted += 1
-        self._toggle_batch_mode()  # exit batch mode
+        self._toggle_batch_mode()
         self.refresh_scores()
         self.refresh_stats()
         messagebox.showinfo("删除完成", f"已删除 {deleted} 条记录。")
@@ -1589,10 +1518,8 @@ class TeacherDashboard(BaseFrame):
             canvas.create_text(x + 17, height - 46 - bar_height, text=str(score), fill=TEXT)
         canvas.create_text(12, 14, text="最近 10 次考试得分", anchor="w", fill=TEXT)
 
-    # ── Question stats tab ──────────────────────────────────────────
     def build_stats_tab(self) -> None:
-        """Layout the per-question statistics tab."""
-        # Top control bar
+
         ctrl = ttk.Frame(self.stats_tab, style="App.TFrame")
         ctrl.pack(fill="x", pady=(0, 12))
         ttk.Label(ctrl, text="选择题目：").pack(side="left")
@@ -1603,28 +1530,24 @@ class TeacherDashboard(BaseFrame):
         self.stats_combo.pack(side="left", padx=(6, 0))
         self.stats_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_stats())
 
-        # Main content: two canvases side by side
         content = ttk.Frame(self.stats_tab, style="App.TFrame")
         content.pack(fill="both", expand=True)
         content.columnconfigure(0, weight=1)
         content.columnconfigure(1, weight=1)
         content.rowconfigure(0, weight=1)
 
-        # Left: bar chart
         left_card = ttk.Frame(content, style="Card.TFrame", padding=12)
         left_card.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
         ttk.Label(left_card, text="各题错误人数", style="Section.TLabel").pack(anchor="w")
         self.stats_bar_canvas = tk.Canvas(left_card, height=340, bg=PANEL, highlightthickness=0)
         self.stats_bar_canvas.pack(fill="both", expand=True, pady=(8, 0))
 
-        # Right: pie chart
         right_card = ttk.Frame(content, style="Card.TFrame", padding=12)
         right_card.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
         ttk.Label(right_card, text="错误答案分布", style="Section.TLabel").pack(anchor="w")
         self.stats_pie_canvas = tk.Canvas(right_card, height=340, bg=PANEL, highlightthickness=0)
         self.stats_pie_canvas.pack(fill="both", expand=True, pady=(8, 0))
 
-        # Bottom: details table
         detail_card = ttk.Frame(self.stats_tab, style="Card.TFrame", padding=10)
         detail_card.pack(fill="x", pady=(12, 0))
         ttk.Label(detail_card, text="错误答案详情", style="Section.TLabel").pack(anchor="w")
@@ -1641,16 +1564,14 @@ class TeacherDashboard(BaseFrame):
         self.stats_detail_table.pack(fill="x", pady=(6, 0))
 
     def refresh_stats(self) -> None:
-        """Aggregate score data and redraw all stats charts."""
         records = self.controller.score_manager.list_scores()
         questions = self.controller.question_bank.load_questions()
-        # Populate combo
+
         combo_values = ["全部"] + [f"#{q.id} [{q.qtype}] {q.text[:18]}…" for q in questions]
         self.stats_combo["values"] = combo_values
         if self.stats_question_var.get() not in combo_values:
             self.stats_question_var.set("全部")
 
-        # Aggregate: {qid: {"wrong_count": N, "wrong_answers": {answer: count}}}
         stats: Dict[int, Dict] = {}
         for q in questions:
             stats[q.id] = {"question": q, "wrong_count": 0, "wrong_answers": {}}
@@ -1669,7 +1590,6 @@ class TeacherDashboard(BaseFrame):
                     stats[qid_int]["wrong_answers"][ans]["count"] += 1
                     stats[qid_int]["wrong_answers"][ans]["students"].append(student_name)
 
-        # Redraw charts
         selected = self.stats_question_var.get()
         self._draw_wrong_count_bars(stats, selected)
         self._draw_wrong_answer_pie(stats, selected)
@@ -1697,7 +1617,6 @@ class TeacherDashboard(BaseFrame):
         bar_w = max(14, bar_gap - 8)
         baseline = h - 40
 
-        # Axis
         canvas.create_line(50, baseline, w - 20, baseline, fill=BORDER)
 
         colors_palette = ["#2563eb", "#16a34a", "#dc2626", "#ea580c", "#8b5cf6",
@@ -1707,10 +1626,10 @@ class TeacherDashboard(BaseFrame):
             bar_h = (s["wrong_count"] / max_count) * (baseline - 30)
             color = colors_palette[idx % len(colors_palette)]
             canvas.create_rectangle(x, baseline - bar_h, x + bar_w, baseline, fill=color, outline="")
-            # Count label on top
+
             canvas.create_text(x + bar_w / 2, baseline - bar_h - 12,
                                text=str(s["wrong_count"]), fill=TEXT, font=("Microsoft YaHei", 9, "bold"))
-            # Question ID below
+
             canvas.create_text(x + bar_w / 2, baseline + 14,
                                text=f"#{qid}", fill=MUTED, font=("Microsoft YaHei", 8))
 
@@ -1721,10 +1640,9 @@ class TeacherDashboard(BaseFrame):
         h = 320
         canvas.delete("all")
 
-        # Determine which wrong_answers to show
         answers_agg: Dict[str, Dict] = {}
         if selected == "全部":
-            # Merge all
+
             for qid, s in stats.items():
                 for ans, data in s["wrong_answers"].items():
                     if ans not in answers_agg:
@@ -1740,7 +1658,6 @@ class TeacherDashboard(BaseFrame):
             canvas.create_text(w / 2, h / 2, text="该题无人答错", fill=MUTED, font=("Microsoft YaHei", 12))
             return
 
-        # Pie chart
         total = sum(d["count"] for d in answers_agg.values())
         cx, cy = w // 2 - 30, h // 2
         radius = min(cx - 20, cy - 30, 100)
@@ -1749,13 +1666,13 @@ class TeacherDashboard(BaseFrame):
                        "#0891b2", "#ca8a04", "#be185d", "#4f46e5", "#0d9488"]
 
         sorted_answers = sorted(answers_agg.items(), key=lambda x: -x[1]["count"])
-        # tkinter create_arc with extent=360 renders nothing — draw a full oval instead
+
         if len(sorted_answers) == 1:
             ans, data = sorted_answers[0]
             color = pie_colors[0]
             canvas.create_oval(cx - radius, cy - radius, cx + radius, cy + radius,
                                fill=color, outline=PANEL, width=2)
-            # Label
+
             canvas.create_text(cx + radius + 44, cy, text=f"{ans} (100%)",
                                fill=TEXT, font=("Microsoft YaHei", 9, "bold"))
         else:
@@ -1765,7 +1682,7 @@ class TeacherDashboard(BaseFrame):
                 color = pie_colors[idx % len(pie_colors)]
                 canvas.create_arc(cx - radius, cy - radius, cx + radius, cy + radius,
                                   start=start_angle, extent=extent, fill=color, outline=PANEL, width=2)
-                # Label near the arc
+
                 mid_angle = start_angle + extent / 2
                 rad = math.radians(mid_angle)
                 lx = cx + (radius + 44) * math.cos(rad)
@@ -1776,7 +1693,6 @@ class TeacherDashboard(BaseFrame):
                                    fill=TEXT, font=("Microsoft YaHei", 9, "bold"))
                 start_angle += extent
 
-        # Center text
         canvas.create_text(cx, cy, text=f"共{total}次", fill=TEXT, font=("Microsoft YaHei", 10, "bold"))
 
     def _fill_detail_table(self, stats, selected: str) -> None:
@@ -1793,9 +1709,6 @@ class TeacherDashboard(BaseFrame):
                 for student in data["students"]:
                     table.insert("", "end", values=(q_text, student, ans))
 
-    # ── End stats tab ──────────────────────────────────────────────
-
-    # ── Leaderboard tab ────────────────────────────────────────────
     def build_leaderboard_tab(self) -> None:
         self._lb_avatars: list = []
         self.leaderboard_canvas = tk.Canvas(
@@ -1806,7 +1719,6 @@ class TeacherDashboard(BaseFrame):
         self.leaderboard_canvas.bind("<Configure>", self._on_leaderboard_resize)
 
     def _on_leaderboard_resize(self, _event) -> None:
-        """Debounced redraw on window resize."""
         if self._lb_redraw_after:
             self.after_cancel(self._lb_redraw_after)
         self._lb_redraw_after = self.after(80, self.refresh_leaderboard)
@@ -1821,7 +1733,6 @@ class TeacherDashboard(BaseFrame):
             return
         canvas.delete("all")
 
-        # Aggregate total scores per student (keep student_id for avatar lookup)
         from data_manager import load_avatar, avatar_to_tk_image
 
         records = self.controller.score_manager.list_scores()
@@ -1841,22 +1752,19 @@ class TeacherDashboard(BaseFrame):
                                font=("Microsoft YaHei", 14))
             return
 
-        # ── Podium: center everything exactly ──
         cx_center = w / 2
         ground_y = h - 50
         gap = min(180, w / 5)
 
         slots = [
-            (cx_center,          0, "🥇", 160, 100, "#FFD700"),  # 1st — center tallest
-            (cx_center - gap,    1, "🥈", 130,  72, "#C0C0C0"),  # 2nd — left
-            (cx_center + gap,    2, "🥉", 110,  48, "#CD7F32"),  # 3rd — right
+            (cx_center,          0, "🥇", 160, 100, "#FFD700"),
+            (cx_center - gap,    1, "🥈", 130,  72, "#C0C0C0"),
+            (cx_center + gap,    2, "🥉", 110,  48, "#CD7F32"),
         ]
 
-        # Title
         canvas.create_text(cx_center, 38, text="🏆 排行榜", fill=TEXT,
                            font=("Microsoft YaHei", 24, "bold"))
 
-        # Keep refs to avatar PhotoImages so they don't get garbage-collected
         self._lb_avatars: list = []
 
         for cx, ridx, medal, pw, ph, color in slots:
@@ -1868,7 +1776,6 @@ class TeacherDashboard(BaseFrame):
 
             canvas.create_rectangle(px, py, px + pw, ground_y, fill=color, outline="")
 
-            # Avatar — placed high, well above medal
             avatar_b64 = load_avatar(student["sid"])
             avatar_cy = py - 165
             if avatar_b64:
@@ -1879,24 +1786,18 @@ class TeacherDashboard(BaseFrame):
                 except Exception:
                     pass
 
-            # Medal — fixed position, not pushed down by avatar
             medal_y = py - 60
             canvas.create_text(cx, medal_y, text=medal, font=("Segoe UI Emoji", 32))
 
-            # Name below medal
             name_y = medal_y + 30
             canvas.create_text(cx, name_y, text=student["name"],
                                fill=TEXT, font=("Microsoft YaHei", 12, "bold"))
 
-            # Score on podium
             canvas.create_text(cx, py + ph / 2, text=f"{student['total']} 分",
                                fill="white", font=("Microsoft YaHei", 14, "bold"))
 
-        # Ground
         margin = 40
         canvas.create_line(margin, ground_y, w - margin, ground_y, fill=BORDER, width=2)
-
-    # ── End leaderboard tab ────────────────────────────────────────
 
     def add_question(self) -> None:
         try:
@@ -1938,7 +1839,6 @@ class TeacherDashboard(BaseFrame):
             messagebox.showerror("删除失败", "未找到该题目")
 
     def _export_question_bank(self) -> None:
-        """Export the current question bank as a password-protected .sudasqs."""
         from tkinter import filedialog
 
         dlg = ExportExamDialog(self, self.controller)
@@ -1974,7 +1874,6 @@ class TeacherDashboard(BaseFrame):
             messagebox.showerror("导出失败", str(exc))
 
     def _import_question_bank(self) -> None:
-        """Import a .sudasqs question bank (teacher mode — no password needed)."""
         from tkinter import filedialog
 
         path = filedialog.askopenfilename(
@@ -1985,8 +1884,8 @@ class TeacherDashboard(BaseFrame):
             return
         try:
             exam_uuid, _, _, _, questions = self.controller.import_question_bank_as_teacher(path)
-            # Replace current question bank
-            self.controller.question_bank.reorder_questions([])  # clear
+
+            self.controller.question_bank.reorder_questions([])
             for q in questions:
                 self.controller.question_bank.save_question(
                     q.qtype, q.text, q.options, q.answer, q.analysis, q.score
@@ -1997,7 +1896,6 @@ class TeacherDashboard(BaseFrame):
             messagebox.showerror("导入失败", str(exc))
 
     def _import_pdf(self) -> None:
-        """Import PDF files, extract questions via DeepSeek AI, append to bank."""
         from tkinter import filedialog
 
         api_key = self.controller.settings_manager.load_settings().get("api_key", "").strip()
@@ -2024,7 +1922,6 @@ class TeacherDashboard(BaseFrame):
             messagebox.showinfo("导入完成", "AI 未识别到选择题或填空题，没有新题目被导入。")
             return
 
-        # Append to question bank
         for q in questions:
             self.controller.question_bank.save_question(
                 q.qtype, q.text, q.options, q.answer, q.analysis, q.score
@@ -2033,7 +1930,6 @@ class TeacherDashboard(BaseFrame):
         messagebox.showinfo("导入完成",
                             f"AI 识别并导入 {len(questions)} 道题（选择题 + 填空题）。\n请检查并编辑题目内容。")
 
-    # ── Question batch management ─────────────────────────────────
     def _toggle_q_batch_mode(self) -> None:
         self._q_batch_mode = not self._q_batch_mode
         if self._q_batch_mode:
@@ -2079,7 +1975,6 @@ class TeacherDashboard(BaseFrame):
         self.refresh_questions()
         messagebox.showinfo("删除完成", f"已删除 {count} 道题目。")
 
-    # ── Double-click to edit ──
     def _on_question_double_click(self, _event) -> None:
         if self._drag_active:
             return
@@ -2093,7 +1988,6 @@ class TeacherDashboard(BaseFrame):
             return
         EditQuestionDialog(self, self.controller, match)
 
-    # ── Animated drag to reorder ──
     def _on_question_press(self, event) -> None:
         row = self.question_table.identify_row(event.y)
         if row:
@@ -2107,12 +2001,12 @@ class TeacherDashboard(BaseFrame):
         if not self._drag_active and abs(event.y - self._drag_start_y) > self._drag_threshold:
             self._drag_active = True
             self.question_table.configure(cursor="fleur")
-            # Fade-in ghost highlight on the dragged row
+
             self.question_table.item(self._drag_item, tags=("drag_ghost",))
             self._fade_tag_in("drag_ghost", self._drag_item)
 
         if self._drag_active:
-            # Auto-scroll when near top/bottom edges
+
             bbox = self.question_table.bbox(self.question_table.get_children()[0])
             row_h = (bbox[3] if bbox else 28) or 28
             if event.y < row_h:
@@ -2121,11 +2015,11 @@ class TeacherDashboard(BaseFrame):
                 self._auto_scroll(1)
 
             target = self.question_table.identify_row(event.y)
-            # Clear previous target highlight
+
             if self._prev_target and self._prev_target != target and self._prev_target != self._drag_item:
                 self.question_table.item(self._prev_target, tags=())
             if target and target != self._drag_item:
-                # Glow on the drop-target row
+
                 self.question_table.item(target, tags=("drop_target",))
                 target_idx = self.question_table.index(target)
                 self.question_table.move(self._drag_item, "", target_idx)
@@ -2144,20 +2038,19 @@ class TeacherDashboard(BaseFrame):
     def _on_question_release(self, event) -> None:
         if self._drag_active:
             self.question_table.configure(cursor="")
-            # Clear all visual tags before reorder
+
             for iid in self.question_table.get_children():
                 self.question_table.item(iid, tags=())
             self._prev_target = None
             self._apply_reorder()
-            # Flash animation on the rearranged rows
+
             self._animate_reorder_flash()
         self._drag_item = None
         self._drag_active = False
 
     def _fade_tag_in(self, tag_name: str, iid: str, step: int = 0, max_steps: int = 5) -> None:
-        """Animate a tag from transparent-ish to its full color."""
         if self._drag_item != iid:
-            return  # drag ended
+            return
         colors = ["#eff6ff", "#dbeafe", "#bfdbfe", "#93c5fd", "#dbeafe"]
         idx = min(step, len(colors) - 1)
         self.question_table.tag_configure(tag_name, background=colors[idx])
@@ -2165,13 +2058,12 @@ class TeacherDashboard(BaseFrame):
             self.after(40, lambda: self._fade_tag_in(tag_name, iid, step + 1, max_steps))
 
     def _animate_reorder_flash(self) -> None:
-        """Brief flash animation on all rows after reorder completes."""
         colors = ["#fef9c3", "#fef3c7", "#fefce8", "#fffbeb", "#ffffff"]
         children = list(self.question_table.get_children())
 
         def _step(s: int) -> None:
             if s >= len(colors):
-                # Clear all tags
+
                 for iid in self.question_table.get_children():
                     self.question_table.item(iid, tags=())
                 return
@@ -2183,7 +2075,6 @@ class TeacherDashboard(BaseFrame):
         _step(0)
 
     def _apply_reorder(self) -> None:
-        """Persist the current Treeview row order to the Excel file with fresh IDs."""
         ordered_ids: List[int] = []
         for iid in self.question_table.get_children():
             ordered_ids.append(int(iid))
@@ -2194,9 +2085,7 @@ class TeacherDashboard(BaseFrame):
             return
         self.refresh_questions()
 
-
 class SettingsDialog(tk.Toplevel):
-    """Appearance settings dialog — font family and color customization."""
 
     COLOR_KEYS = ["BG", "PANEL", "TEXT", "MUTED", "PRIMARY", "SUCCESS", "DANGER", "BORDER"]
     COLOR_LABELS = {
@@ -2229,13 +2118,12 @@ class SettingsDialog(tk.Toplevel):
 
         self._build_ui()
         self._update_preview()
-        self.geometry("")  # shrink to content
+        self.geometry("")
 
     def _build_ui(self) -> None:
         body = ttk.Frame(self, padding=20, style="App.TFrame")
         body.pack(fill="both", expand=True)
 
-        # ── Font section ──
         font_row = 0
         ttk.Label(body, text="字体设置", style="Section.TLabel").grid(
             row=font_row, column=0, columnspan=4, sticky="w", pady=(0, 8)
@@ -2248,7 +2136,6 @@ class SettingsDialog(tk.Toplevel):
         font_combo.grid(row=font_row + 1, column=1, sticky="w")
         font_combo.bind("<<ComboboxSelected>>", lambda _e: self._update_preview())
 
-        # ── Color section ──
         color_start = font_row + 2
         ttk.Label(body, text="颜色设置", style="Section.TLabel").grid(
             row=color_start, column=0, columnspan=4, sticky="w", pady=(18, 8)
@@ -2268,22 +2155,18 @@ class SettingsDialog(tk.Toplevel):
             self._color_vars[key] = var
             self._color_entries[key] = entry
 
-            # Color swatch
             swatch = tk.Frame(body, width=22, height=22, relief="ridge", bd=1)
             swatch.grid(row=row, column=2, padx=(8, 4), pady=3)
             self._color_swatches[key] = swatch
 
-            # Pick button
             ttk.Button(
                 body, text="选色",
                 command=lambda k=key: self._pick_color(k),
             ).grid(row=row, column=3, padx=(4, 0), pady=3)
 
-        # Initialize all swatch colors immediately
         for key in self.COLOR_KEYS:
             self._update_swatch(key)
 
-        # ── Preview section ──
         preview_row = color_start + 1 + len(self.COLOR_KEYS)
         ttk.Label(body, text="实时预览", style="Section.TLabel").grid(
             row=preview_row, column=0, columnspan=4, sticky="w", pady=(18, 6)
@@ -2293,7 +2176,6 @@ class SettingsDialog(tk.Toplevel):
         preview_frame.grid(row=preview_row + 1, column=0, columnspan=4, sticky="ew", pady=(0, 14))
         body.columnconfigure(0, weight=1)
 
-        # Preview: title, body text, success/danger labels, a mock button
         self._preview_title = tk.Label(
             preview_frame, text="标题文字 Title",
             font=(self.font_family, 16, "bold"), fg=self.colors["TEXT"], bg=self.colors["BG"],
@@ -2333,7 +2215,6 @@ class SettingsDialog(tk.Toplevel):
         )
         self._preview_btn.pack(expand=True)
 
-        # ── API Key section (at the bottom) ──
         api_row = preview_row + 2
         ttk.Label(body, text="在此处输入 API Keys", style="Section.TLabel").grid(
             row=api_row, column=0, columnspan=4, sticky="w", pady=(18, 8)
@@ -2345,7 +2226,6 @@ class SettingsDialog(tk.Toplevel):
                   style="Muted.TLabel").grid(
             row=api_row + 2, column=0, columnspan=4, sticky="w", padx=(10, 0), pady=(0, 12))
 
-        # ── Bottom buttons ──
         btn_row = ttk.Frame(body, style="App.TFrame")
         btn_row.grid(row=api_row + 3, column=0, columnspan=4, sticky="ew", pady=(4, 0))
         RoundedButton(btn_row, text="恢复默认", command=self._reset_defaults, width=90).pack(side="left")
@@ -2393,7 +2273,7 @@ class SettingsDialog(tk.Toplevel):
             self._preview_muted.configure(font=(font, 10), fg=c["MUTED"], bg=c["BG"])
             self._preview_btn.configure(font=(font, 10), bg=c["PRIMARY"])
             self._preview_btn.master.configure(bg=c["PRIMARY"])
-            # Update preview frame bg
+
             self._preview_title.master.configure(bg=c["BG"])
             self._preview_success.master.configure(bg=c["BG"])
 
@@ -2424,47 +2304,42 @@ class SettingsDialog(tk.Toplevel):
             self._update_swatch(key)
         self._update_preview()
 
-
 def _register_font(font_path: str) -> str:
-    """Register a .ttf font on Windows and return its family name."""
     import ctypes
     from pathlib import Path
 
     path = str(Path(font_path).resolve())
     try:
-        # Register font with Windows
+
         ctypes.windll.gdi32.AddFontResourceW(path)
-        # Notify all windows
+
         HWND_BROADCAST = 0xFFFF
         WM_FONTCHANGE = 0x001D
         ctypes.windll.user32.SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0)
     except Exception:
         pass
 
-    # Try to get family name via PIL
     try:
         from PIL import ImageFont
         f = ImageFont.truetype(path, 12)
-        # getname() returns [(font_name, subfamily_name)] or similar
+
         names = f.getname()
         for name_tuple in names:
             for n in name_tuple:
                 if n and isinstance(n, str) and n.strip():
-                    # Skip style names like "Regular"
+
                     if n.lower() not in ("regular", "bold", "italic", "bold italic"):
                         return n
-        # fallback: first name
+
         if names and names[0]:
             return str(names[0][0])
     except Exception:
         pass
     return Path(font_path).stem
 
-
 def configure_styles(root: tk.Tk, settings: dict | None = None) -> None:
     global BG, PANEL, TEXT, MUTED, PRIMARY, SUCCESS, DANGER, BORDER, FONT_FAMILY
 
-    # Register loli.ttf as default font
     from pathlib import Path
     loli_path = Path(__file__).resolve().parent / "assets" / "loli.ttf"
     loli_family = ""
@@ -2473,7 +2348,6 @@ def configure_styles(root: tk.Tk, settings: dict | None = None) -> None:
 
     DEFAULT_FONT = loli_family or "Lolita"
 
-    # Load overrides from settings
     if settings:
         colors = settings.get("colors", {})
         BG = colors.get("BG", BG)
@@ -2515,9 +2389,7 @@ def configure_styles(root: tk.Tk, settings: dict | None = None) -> None:
     style.configure("Treeview.Heading", font=(font_family, 11, "bold"))
     style.configure("Exam.TRadiobutton", font=(font_family, 16), background=PANEL)
 
-
 def _darken(hex_color: str, factor: float = 0.85) -> str:
-    """Return a darker version of a hex color."""
     hex_color = hex_color.lstrip("#")
     r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
     r, g, b = int(r * factor), int(g * factor), int(b * factor)

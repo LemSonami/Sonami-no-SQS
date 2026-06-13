@@ -1,11 +1,3 @@
-"""RSA + AES hybrid encryption for .ilovesuda score files.
-
-- Scores are stored as AES-encrypted Excel bytes, with the AES key
-  RSA-encrypted using the teacher's public key.
-- Only the teacher's private key can decrypt, preventing students
-  from tampering with scores via external tools.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,11 +16,7 @@ _KEY_SIZE = 2048
 _AES_KEY_BYTES = 32
 _IV_BYTES = 16
 
-
-# ── Key management ──────────────────────────────────────────────
-
 def _ensure_keys() -> None:
-    """Generate RSA key pair if they do not already exist."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if _PRIVATE_KEY_PATH.exists() and _PUBLIC_KEY_PATH.exists():
         return
@@ -49,36 +37,28 @@ def _ensure_keys() -> None:
         )
     )
 
-
 def _load_private_key() -> rsa.RSAPrivateKey:
     _ensure_keys()
     return serialization.load_pem_private_key(
         _PRIVATE_KEY_PATH.read_bytes(), password=None
     )
 
-
 def _load_public_key() -> rsa.RSAPublicKey:
     _ensure_keys()
     return serialization.load_pem_public_key(_PUBLIC_KEY_PATH.read_bytes())
 
-
-# ── Hybrid encrypt / decrypt ────────────────────────────────────
-
 def encrypt_bytes(plaintext: bytes) -> bytes:
-    """Encrypt arbitrary bytes with AES-256-CBC; wrap the AES key with RSA-OAEP."""
     public_key = _load_public_key()
 
     aes_key = os.urandom(_AES_KEY_BYTES)
     iv = os.urandom(_IV_BYTES)
 
-    # AES encrypt
     pad_len = 16 - (len(plaintext) % 16)
     padded = plaintext + bytes([pad_len] * pad_len)
     cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(padded) + encryptor.finalize()
 
-    # RSA encrypt the AES key + IV
     encrypted_key = public_key.encrypt(
         aes_key + iv,
         padding.OAEP(
@@ -88,20 +68,16 @@ def encrypt_bytes(plaintext: bytes) -> bytes:
         ),
     )
 
-    # Wire format: [2-byte key-length (big-endian)] [encrypted AES key+IV] [ciphertext]
     key_len = len(encrypted_key)
     return key_len.to_bytes(2, "big") + encrypted_key + ciphertext
 
-
 def decrypt_bytes(data: bytes) -> bytes:
-    """Decrypt data produced by `encrypt_bytes` using the teacher's private key."""
     private_key = _load_private_key()
 
     key_len = int.from_bytes(data[:2], "big")
     encrypted_key = data[2 : 2 + key_len]
     ciphertext = data[2 + key_len :]
 
-    # RSA decrypt
     aes_key_iv = private_key.decrypt(
         encrypted_key,
         padding.OAEP(
@@ -113,23 +89,16 @@ def decrypt_bytes(data: bytes) -> bytes:
     aes_key = aes_key_iv[:_AES_KEY_BYTES]
     iv = aes_key_iv[_AES_KEY_BYTES : _AES_KEY_BYTES + _IV_BYTES]
 
-    # AES decrypt
     cipher = Cipher(algorithms.AES(aes_key), modes.CBC(iv))
     decryptor = cipher.decryptor()
     plaintext = decryptor.update(ciphertext) + decryptor.finalize()
 
-    # Remove PKCS7-style padding
     pad_len = plaintext[-1]
     return plaintext[:-pad_len]
 
-
-# ── Password-based AES encryption for .sudasqs question-bank files ──
-
 _PBKDF2_ITERATIONS = 600_000
 
-
 def derive_key(password: str, salt: bytes) -> bytes:
-    """Derive a 32-byte AES key from a password using PBKDF2-SHA256."""
     import hashlib
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     from cryptography.hazmat.primitives import hashes
@@ -142,9 +111,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
     )
     return kdf.derive(password.encode("utf-8"))
 
-
 def encrypt_with_password(plaintext: bytes, password: str) -> bytes:
-    """AES-256-CBC encrypt with key derived from password (PBKDF2)."""
     import hashlib
 
     salt = os.urandom(16)
@@ -158,12 +125,9 @@ def encrypt_with_password(plaintext: bytes, password: str) -> bytes:
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(padded) + encryptor.finalize()
 
-    # Wire format: [salt:16][verify_hash:32][iv:16][ciphertext]
     return salt + verify_hash + iv + ciphertext
 
-
 def decrypt_with_password(data: bytes, password: str) -> bytes:
-    """Decrypt data produced by `encrypt_with_password`; raises on wrong password."""
     import hashlib
 
     salt = data[:16]
@@ -182,28 +146,20 @@ def decrypt_with_password(data: bytes, password: str) -> bytes:
     pad_len = plaintext[-1]
     return plaintext[:-pad_len]
 
-
-# ── Dual-layer encryption for .sudasqs (RSA for teacher, password for student) ──
-
 def encrypt_question_bank(plaintext: bytes, password: str) -> bytes:
-    """Encrypt: password-layer for student + RSA-encrypted password for teacher."""
     pwd_encrypted = encrypt_with_password(plaintext, password)
     rsa_encrypted_password = encrypt_bytes(password.encode("utf-8"))
     rsa_len = len(rsa_encrypted_password)
     return rsa_len.to_bytes(2, "big") + rsa_encrypted_password + pwd_encrypted
 
-
 def decrypt_question_bank_as_teacher(data: bytes) -> bytes:
-    """Decrypt using RSA private key — no password needed."""
     rsa_len = int.from_bytes(data[:2], "big")
     rsa_encrypted_password = data[2 : 2 + rsa_len]
     pwd_encrypted = data[2 + rsa_len :]
     password = decrypt_bytes(rsa_encrypted_password).decode("utf-8")
     return decrypt_with_password(pwd_encrypted, password)
 
-
 def decrypt_question_bank_as_student(data: bytes, password: str) -> bytes:
-    """Decrypt using the teacher-set password."""
     rsa_len = int.from_bytes(data[:2], "big")
     pwd_encrypted = data[2 + rsa_len :]
     return decrypt_with_password(pwd_encrypted, password)

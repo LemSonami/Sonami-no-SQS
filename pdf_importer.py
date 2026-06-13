@@ -1,5 +1,3 @@
-"""PDF importer — extract text from PDFs and use DeepSeek AI to create questions."""
-
 from __future__ import annotations
 
 import json
@@ -7,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import fitz  # pymupdf
+import fitz
 import requests
 
 from data_manager import Question
@@ -49,9 +47,7 @@ _SYSTEM_PROMPT = """你是一个题库导入助手。请从提供的材料中提
   ]
 }"""
 
-
 def extract_pdf_text(filepath: str) -> str:
-    """Extract all text from a PDF file using pymupdf."""
     doc = fitz.open(filepath)
     text = ""
     for page in doc:
@@ -59,21 +55,14 @@ def extract_pdf_text(filepath: str) -> str:
     doc.close()
     return text.strip()
 
-
 def _extract_week_number(filename: str) -> Optional[int]:
-    """Extract week number from a filename like '第3周作业.pdf' or '第3周作业参考答案.pdf'."""
     match = re.search(r"第\s*(\d+)\s*周", filename)
     if match:
         return int(match.group(1))
     return None
 
-
 def match_files(pdf_paths: List[str]) -> List[Tuple[str, Optional[str]]]:
-    """Pair assignment PDFs with their answer-key PDFs by week number.
 
-    Returns list of (assignment_path, answer_path_or_None).
-    """
-    # Group by week number
     week_map: Dict[int, Dict[str, Optional[str]]] = {}
     orphans: List[str] = []
 
@@ -99,9 +88,7 @@ def match_files(pdf_paths: List[str]) -> List[Tuple[str, Optional[str]]]:
         pairs.append((path, None))
     return pairs
 
-
 def _call_deepseek(api_key: str, prompt: str) -> str:
-    """Call the DeepSeek API and return the assistant's response text."""
     resp = requests.post(
         DEEPSEEK_API_URL,
         headers={
@@ -122,10 +109,8 @@ def _call_deepseek(api_key: str, prompt: str) -> str:
     data = resp.json()
     return data["choices"][0]["message"]["content"]
 
-
 def _parse_ai_response(response_text: str) -> List[Question]:
-    """Parse the DeepSeek JSON response into Question objects."""
-    # Strip markdown code fences if present
+
     text = response_text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*\n", "", text)
@@ -134,7 +119,7 @@ def _parse_ai_response(response_text: str) -> List[Question]:
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        # Try to find JSON object in the response
+
         match = re.search(r"\{[\s\S]*\}", text)
         if match:
             data = json.loads(match.group())
@@ -154,7 +139,7 @@ def _parse_ai_response(response_text: str) -> List[Question]:
         analysis = item.get("analysis", "").strip()
         score = int(item.get("score", 10))
         questions.append(Question(
-            id=0,  # temporary, will be reassigned on save
+            id=0,
             qtype=qtype,
             text=text_q,
             options=options,
@@ -164,13 +149,7 @@ def _parse_ai_response(response_text: str) -> List[Question]:
         ))
     return questions
 
-
 def import_pdfs(api_key: str, pdf_paths: List[str]) -> List[Question]:
-    """Main entry: extract text from PDFs, call AI, return Question objects.
-
-    Pairs assignment PDFs with answer-key PDFs by week number,
-    sends combined prompts to DeepSeek, and returns all extracted questions.
-    """
     if not api_key.strip():
         raise ValueError("请先在设置中输入 DeepSeek API Key")
 
@@ -185,7 +164,6 @@ def import_pdfs(api_key: str, pdf_paths: List[str]) -> List[Question]:
         if answer_path:
             answer_text = extract_pdf_text(answer_path)
 
-        # Build prompt
         prompt = f"【作业文件名】{assign_name}\n\n【作业内容】\n{assign_text}"
         if answer_text:
             prompt += f"\n\n【参考答案】\n{answer_text}"
@@ -196,7 +174,7 @@ def import_pdfs(api_key: str, pdf_paths: List[str]) -> List[Question]:
             questions = _parse_ai_response(response)
             all_questions.extend(questions)
         except Exception as exc:
-            # Log and continue with next file
+
             print(f"[PDF导入] 处理 {assign_name} 失败: {exc}")
 
     return all_questions

@@ -9,11 +9,9 @@ from ui_views import configure_styles
 
 _bg_process = None
 
-
 def main() -> None:
     global _bg_process
 
-    # Launch BASpark.exe silently in background
     exe_path = Path(__file__).resolve().parent / "BASpark.exe"
     if exe_path.exists():
         startupinfo = subprocess.STARTUPINFO()
@@ -32,7 +30,6 @@ def main() -> None:
     root.title("Sonami×智测系统 V0.1.0")
     root.geometry("1000x680")
 
-    # Set window icon
     icon_path = Path(__file__).resolve().parent / "assets" / "ICO.ico"
     if icon_path.exists():
         root.iconbitmap(str(icon_path))
@@ -40,7 +37,6 @@ def main() -> None:
 
     _exit_called = False
 
-    # Clean up background process on exit
     def _on_exit():
         nonlocal _exit_called
         if _exit_called:
@@ -59,7 +55,6 @@ def main() -> None:
 
     root.protocol("WM_DELETE_WINDOW", _on_exit)
 
-    # Load saved settings before applying styles (or use defaults)
     from data_manager import SettingsManager
     settings_mgr = SettingsManager()
     settings = settings_mgr.load_settings()
@@ -75,7 +70,6 @@ def main() -> None:
     controller.show_login()
     root.mainloop()
     _on_exit()
-
 
 if __name__ == "__main__":
     main()

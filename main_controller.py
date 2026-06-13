@@ -1,5 +1,3 @@
-"""Controller layer for the Smart Quiz System."""
-
 from __future__ import annotations
 
 import random
@@ -18,9 +16,7 @@ from data_manager import (
     import_question_bank_as_teacher,
 )
 
-
 class QuizEngine:
-    """Own one exam session and scoring rules."""
 
     def __init__(self, question_bank: QuestionBank, exam_size: int = 5) -> None:
         self.question_bank = question_bank
@@ -84,9 +80,7 @@ class QuizEngine:
             return user_answer.strip().lower() == question.answer.strip().lower()
         return user_answer.strip().upper() == question.answer.strip().upper()
 
-
 class AppController:
-    """Route between views and coordinate model objects."""
 
     def __init__(self, root) -> None:
         self.root = root
@@ -121,7 +115,7 @@ class AppController:
         if not user:
             return False
         self.current_user = user
-        # Cache last login (preserve existing avatar if any)
+
         import json
         from data_manager import LOGIN_CACHE_FILE
         try:
@@ -142,7 +136,6 @@ class AppController:
     def show_student_dashboard(self) -> None:
         from ui_views import StudentDashboard
 
-        # Load avatar if not already in current_user
         if self.current_user and not self.current_user.get("avatar_base64"):
             from data_manager import load_avatar
             sid = self.current_user.get("student_id", "")
@@ -175,7 +168,6 @@ class AppController:
                             duration_minutes: int = 30,
                             distribution: dict | None = None,
                             exam_type: str = "exam") -> str:
-        """Export the current question bank as a password-protected .sudasqs."""
         questions = self.question_bank.load_questions()
         exam_uuid, data = export_question_bank_to_bytes(
             questions, password, duration_minutes, distribution, exam_type,
@@ -184,20 +176,15 @@ class AppController:
         return exam_uuid
 
     def import_question_bank_as_teacher(self, filepath: str) -> tuple:
-        """Import .sudasqs as teacher (RSA, no password needed).
-        Returns (exam_uuid, duration, distribution, questions)."""
         data = Path(filepath).read_bytes()
         return import_question_bank_as_teacher(data)
 
     def import_question_bank_for_exam(self, filepath: str, password: str) -> tuple:
-        """Import a .sudasqs file as student (password required).
-        Returns (exam_uuid, duration, distribution, questions)."""
         data = Path(filepath).read_bytes()
         return import_question_bank_as_student(data, password)
 
     def _pick_exam_questions(self, questions: List[Question],
                              distribution: dict | None = None) -> List[Question]:
-        """Select N questions per type from the available pool."""
         import random
 
         if distribution is None:
@@ -229,7 +216,7 @@ class AppController:
         from datetime import datetime
 
         self.last_result = self.quiz_engine.calculate_score()
-        # Collect wrong answers from the result details
+
         wrong_answers: Dict[int, str] = {}
         for detail in self.last_result.get("details", []):
             if not detail["correct"]:
@@ -290,7 +277,7 @@ class AppController:
         import json
 
         _save_avatar(student_id, avatar_b64)
-        # Also update login cache
+
         try:
             cache = {}
             if LOGIN_CACHE_FILE.exists():
@@ -301,7 +288,6 @@ class AppController:
             pass
 
     def export_current_result(self, filepath: str) -> None:
-        """Encrypt the last exam result as a .ilovesuda file for the student to save."""
         import json
 
         from crypto_utils import encrypt_bytes
@@ -329,26 +315,25 @@ class AppController:
         Path(filepath).write_bytes(encrypt_bytes(payload))
 
     def import_result_file(self, filepath: str) -> None:
-        """Decrypt a student .ilovesuda file and append the record to scores.ilovesuda."""
         import json
 
         from crypto_utils import decrypt_bytes
 
         raw = decrypt_bytes(Path(filepath).read_bytes())
         record = json.loads(raw.decode("utf-8"))
-        # Use the original exam time from the file; fall back to now only if missing
+
         if not record.get("exam_time"):
             from datetime import datetime
 
             record["exam_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Validate student is registered
+
         student_name = str(record.get("student_name", ""))
         student_id = str(record.get("student_id", ""))
         if not self.user_db.is_registered(student_id):
             raise ValueError(f"{student_name} 学生不在学生名单中")
 
         self.score_manager.import_record(record)
-        # Save avatar if present
+
         avatar = record.get("avatar_base64", "")
         if avatar:
             from data_manager import save_avatar as _save_avatar
