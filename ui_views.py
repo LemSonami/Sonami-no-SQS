@@ -2315,7 +2315,7 @@ def _register_font(font_path: str) -> str:
 
         HWND_BROADCAST = 0xFFFF
         WM_FONTCHANGE = 0x001D
-        ctypes.windll.user32.SendMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0)
+        ctypes.windll.user32.PostMessageW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0)
     except Exception:
         pass
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
@@ -12,7 +13,10 @@ from openpyxl.styles import Font, PatternFill
 
 from crypto_utils import decrypt_bytes, encrypt_bytes
 
-BASE_DIR = Path(__file__).resolve().parent
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 USERS_XLSX_FILE = DATA_DIR / "users.xlsx"
 USERS_SUDAUSERS_FILE = DATA_DIR / "users.sudausers"

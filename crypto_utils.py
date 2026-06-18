@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-_BASE = Path(__file__).resolve().parent
+if getattr(sys, 'frozen', False):
+    _BASE = Path(sys.executable).resolve().parent
+else:
+    _BASE = Path(__file__).resolve().parent
 DATA_DIR = _BASE / "data"
 _PRIVATE_KEY_PATH = DATA_DIR / "teacher_private.pem"
 _PUBLIC_KEY_PATH = DATA_DIR / "teacher_public.pem"
