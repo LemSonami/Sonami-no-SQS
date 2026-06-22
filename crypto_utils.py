@@ -12,9 +12,9 @@ if getattr(sys, 'frozen', False):
     _BASE = Path(sys.executable).resolve().parent
 else:
     _BASE = Path(__file__).resolve().parent
-DATA_DIR = _BASE / "data"
-_PRIVATE_KEY_PATH = DATA_DIR / "teacher_private.pem"
-_PUBLIC_KEY_PATH = DATA_DIR / "teacher_public.pem"
+DATA_DIR = _BASE/"data"
+_PRIVATE_KEY_PATH = DATA_DIR/"teacher_private.pem"
+_PUBLIC_KEY_PATH = DATA_DIR/"teacher_public.pem"
 
 _KEY_SIZE = 2048
 _AES_KEY_BYTES = 32

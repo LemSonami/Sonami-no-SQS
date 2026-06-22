@@ -178,7 +178,7 @@ class LoginWindow(BaseFrame):
         name = self.name_var.get().strip()
         password = self.password_var.get()
         if not student_id or not name or not password:
-            messagebox.showwarning("表单验证", "请输入学号、姓名和密码")
+            messagebox.showwarning("无人在意", "请输入学号、姓名和密码")
             return
         if not self.controller.login(student_id, name, password):
             messagebox.showerror("登录失败", "学号、姓名或密码错误")
@@ -991,7 +991,7 @@ class EditQuestionDialog(tk.Toplevel):
             )
             self.controller.question_bank.update_question(updated)
         except ValueError as exc:
-            messagebox.showwarning("表单验证", str(exc) or "分值必须为整数")
+            messagebox.showwarning("无人在意", str(exc) or "分值必须为整数")
             return
         except RuntimeError as exc:
             messagebox.showerror("保存失败", str(exc))
@@ -1812,7 +1812,7 @@ class TeacherDashboard(BaseFrame):
                 score,
             )
         except ValueError as exc:
-            messagebox.showwarning("表单验证", str(exc))
+            messagebox.showwarning("无人在意", str(exc))
             return
         except RuntimeError as exc:
             messagebox.showerror("题库错误", str(exc))
