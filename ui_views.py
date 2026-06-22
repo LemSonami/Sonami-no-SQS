@@ -523,7 +523,8 @@ class QuizWindow(BaseFrame):
         self.answer_var.set(saved)
 
         if question.qtype in {"单选", "判断"}:
-            for option in question.options:
+            options = question.options if question.options else ["正确", "错误"]
+            for option in options:
                 value = self._option_value(option, question.qtype)
                 rb = ttk.Radiobutton(
                     self.answer_area,
